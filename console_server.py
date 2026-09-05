@@ -1,0 +1,51 @@
+"""Loopback-only local mission console. Explicitly started; no autostart."""
+import argparse, json
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
+import mission
+
+ROOT = Path(__file__).resolve().parent
+STATE = ROOT / 'state'
+MISSION = STATE / 'mission.json'
+DASHBOARD = ROOT / 'dashboard.html'
+
+
+def read_json(path, default):
+    try: return json.loads(path.read_text(encoding='utf-8'))
+    except (OSError, json.JSONDecodeError): return default
+
+def snapshot():
+    rows = []
+    events = STATE / 'events.jsonl'
+    if events.exists():
+        for line in events.read_text(encoding='utf-8').splitlines()[-40:]:
+            try: rows.append(json.loads(line))
+            except json.JSONDecodeError: pass
+    return {'mission': mission.load(MISSION), 'worker': read_json(STATE/'status.json', {'state':'not-launched'}), 'events': rows,
+            'scope_boundary':'Local-only V0: Chuck + Claude; no public listener, peer bus, or automatic dispatch.'}
+
+class Handler(BaseHTTPRequestHandler):
+    def log_message(self, fmt, *args): pass
+    def send_json(self, code, body):
+        data=json.dumps(body).encode(); self.send_response(code); self.send_header('Content-Type','application/json'); self.send_header('Content-Length',str(len(data))); self.end_headers(); self.wfile.write(data)
+    def do_GET(self):
+        if self.path == '/api/snapshot': return self.send_json(200, snapshot())
+        if self.path != '/': return self.send_json(404, {'error':'not found'})
+        data=DASHBOARD.read_bytes(); self.send_response(200); self.send_header('Content-Type','text/html; charset=utf-8'); self.send_header('Content-Length',str(len(data))); self.end_headers(); self.wfile.write(data)
+    def do_POST(self):
+        actions={'/api/pause':'pause','/api/resume':'resume','/api/clear':'clear'}
+        if self.path not in actions: return self.send_json(404, {'error':'not found'})
+        try: result=mission.transition(MISSION, actions[self.path]); self.send_json(200, {'mission':result})
+        except ValueError as exc: self.send_json(409, {'error':str(exc)})
+
+def main():
+    parser=argparse.ArgumentParser(); parser.add_argument('action', choices=['start','status','mission-start','pause','resume','clear']); parser.add_argument('--objective'); args=parser.parse_args()
+    STATE.mkdir(exist_ok=True)
+    if args.action=='start':
+        server=ThreadingHTTPServer(('127.0.0.1',8765),Handler); print('Mission Console: http://127.0.0.1:8765'); server.serve_forever()
+    elif args.action=='status': print(json.dumps(snapshot(),indent=2))
+    elif args.action=='mission-start':
+        if not args.objective: parser.error('--objective required')
+        print(json.dumps(mission.start(MISSION,args.objective,['dashboard reflects durable state'],[{'name':'Chuck','role':'coordinator','requested_model':'current','requested_effort':'high'},{'name':'Claude','role':'worker','requested_model':'sonnet','requested_effort':'medium'}],{'max_rounds':5,'max_turns_per_worker':8,'max_budget_usd':2.0}),indent=2))
+    else: print(json.dumps(mission.transition(MISSION,args.action),indent=2))
+if __name__=='__main__': main()

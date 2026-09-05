@@ -249,15 +249,37 @@
 </main>
 
 <script>
-  // wireControls: placeholder only. Chuck's local controller will replace/extend
-  // this to attach real behavior to the buttons. It intentionally does nothing
-  // beyond updating the on-page status message.
-  function wireControls() {
+  function show(id, value) { document.getElementById(id).textContent = value || "—"; }
+  async function refresh() {
     var status = document.getElementById("controller-status");
-    if (status) {
-      status.textContent = "wireControls() called: no controller attached yet.";
-    }
+    try {
+      var data = await (await fetch('/api/snapshot')).json();
+      var mission = data.mission || {};
+      var worker = data.worker || {};
+      show('mission-objective', mission.objective || 'No active mission.');
+      show('mission-state', mission.state || 'idle');
+      show('worker-state', worker.state || 'not-launched');
+      show('scope-boundary', data.scope_boundary);
+      var claude = (mission.participants || []).find(function(p) { return p.name === 'Claude'; }) || {};
+      show('requested-model', worker.requested_model || claude.requested_model);
+      show('effective-model', worker.effective_model || 'not reported');
+      show('requested-effort', worker.requested_effort || claude.requested_effort);
+      show('effective-effort', 'runtime-specific / not reported');
+      var timeline = document.getElementById('event-timeline'); timeline.innerHTML = '';
+      (data.events || []).slice().reverse().forEach(function(e) { var item=document.createElement('li'); item.textContent=(e.type || 'event') + ': ' + (e.text || e.note || e.reason || 'recorded'); timeline.appendChild(item); });
+      document.getElementById('empty-state').hidden = Boolean((data.events || []).length);
+      ['btn-refresh','btn-pause','btn-resume','btn-stop'].forEach(function(id) { document.getElementById(id).disabled = id === 'btn-stop'; });
+      status.textContent = 'Local controller connected. Refreshed from durable state.';
+    } catch (err) { document.getElementById('error-state').hidden=false; document.getElementById('error-state').textContent='Controller error: '+err.message; status.textContent='Controller unavailable.'; }
   }
+  async function action(name) { await fetch('/api/' + name, {method:'POST'}); await refresh(); }
+  function wireControls() {
+    document.getElementById('btn-refresh').onclick=refresh;
+    document.getElementById('btn-pause').onclick=function(){action('pause')};
+    document.getElementById('btn-resume').onclick=function(){action('resume')};
+    refresh();
+  }
+  wireControls();
 </script>
 
 </body>
