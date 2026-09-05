@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mission Console</title>
+<style>
+  :root {
+    --bg: #1c1e1f;
+    --panel: #26292a;
+    --panel-border: #3d4143;
+    --text: #e6e6e6;
+    --text-dim: #a3a8ab;
+    --accent: #d98c2b;
+    --ok: #4f9a5a;
+    --warn: #c9a227;
+    --err: #b83c3c;
+    --focus: #ffcf5c;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+    line-height: 1.4;
+  }
+
+  header {
+    background: var(--panel);
+    border-bottom: 2px solid var(--panel-border);
+    padding: 0.75rem 1rem;
+  }
+
+  header h1 {
+    margin: 0;
+    font-size: 1.1rem;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+  }
+
+  main {
+    padding: 0.75rem;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+
+  @media (min-width: 700px) {
+    main {
+      grid-template-columns: 1fr 1fr;
+    }
+    .full-width {
+      grid-column: 1 / -1;
+    }
+  }
+
+  section {
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 4px;
+    padding: 0.75rem 1rem;
+  }
+
+  section h2 {
+    margin: 0 0 0.5rem 0;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-dim);
+    border-bottom: 1px solid var(--panel-border);
+    padding-bottom: 0.35rem;
+  }
+
+  dl {
+    margin: 0;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 0.25rem 0.75rem;
+  }
+
+  dt {
+    color: var(--text-dim);
+    font-size: 0.85rem;
+  }
+
+  dd {
+    margin: 0;
+    font-weight: 600;
+  }
+
+  #mission-state,
+  #worker-state {
+    display: inline-block;
+    padding: 0.1rem 0.5rem;
+    border-radius: 3px;
+    background: #33383a;
+    border: 1px solid var(--panel-border);
+  }
+
+  .controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  button {
+    font: inherit;
+    padding: 0.5rem 0.9rem;
+    border-radius: 3px;
+    border: 1px solid var(--panel-border);
+    background: #33383a;
+    color: var(--text);
+    cursor: pointer;
+  }
+
+  button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  button:not(:disabled):hover {
+    border-color: var(--accent);
+  }
+
+  button:focus-visible,
+  a:focus-visible {
+    outline: 3px solid var(--focus);
+    outline-offset: 2px;
+  }
+
+  #btn-stop:not(:disabled) {
+    border-color: var(--err);
+  }
+
+  #event-timeline {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    max-height: 16rem;
+    overflow-y: auto;
+    font-family: Consolas, "Courier New", monospace;
+    font-size: 0.85rem;
+  }
+
+  #event-timeline li {
+    padding: 0.35rem 0;
+    border-bottom: 1px solid var(--panel-border);
+  }
+
+  #empty-state {
+    color: var(--text-dim);
+    font-style: italic;
+  }
+
+  #error-state {
+    color: var(--err);
+    font-weight: 600;
+  }
+
+  #error-state[hidden],
+  #empty-state[hidden] {
+    display: none;
+  }
+
+  #controller-status {
+    font-size: 0.85rem;
+    color: var(--text-dim);
+    margin-top: 0.5rem;
+  }
+
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Avengers Mission Console &mdash; Local Control</h1>
+</header>
+
+<main>
+
+  <section aria-labelledby="objective-heading">
+    <h2 id="objective-heading">Mission Objective</h2>
+    <p id="mission-objective">No objective assigned yet.</p>
+  </section>
+
+  <section aria-labelledby="status-heading">
+    <h2 id="status-heading">Status</h2>
+    <dl>
+      <dt>Mission state</dt>
+      <dd><span id="mission-state">idle</span></dd>
+
+      <dt>Worker state</dt>
+      <dd><span id="worker-state">disconnected</span></dd>
+
+      <dt>Scope boundary</dt>
+      <dd id="scope-boundary">Not set</dd>
+    </dl>
+  </section>
+
+  <section aria-labelledby="model-heading">
+    <h2 id="model-heading">Model &amp; Effort</h2>
+    <dl>
+      <dt>Requested model</dt>
+      <dd id="requested-model">&mdash;</dd>
+
+      <dt>Effective model</dt>
+      <dd id="effective-model">&mdash;</dd>
+
+      <dt>Requested effort</dt>
+      <dd id="requested-effort">&mdash;</dd>
+
+      <dt>Effective effort</dt>
+      <dd id="effective-effort">&mdash;</dd>
+    </dl>
+  </section>
+
+  <section aria-labelledby="controls-heading">
+    <h2 id="controls-heading">Worker Controls</h2>
+    <div class="controls" role="group" aria-label="Worker controls">
+      <button id="btn-refresh" type="button" disabled>Refresh</button>
+      <button id="btn-pause" type="button" disabled>Pause</button>
+      <button id="btn-resume" type="button" disabled>Resume</button>
+      <button id="btn-stop" type="button" disabled>Stop Worker</button>
+    </div>
+    <p id="controller-status" role="status" aria-live="polite">
+      Controller not connected. Controls are disabled.
+    </p>
+  </section>
+
+  <section class="full-width" aria-labelledby="timeline-heading">
+    <h2 id="timeline-heading">Live Event Timeline</h2>
+    <p id="empty-state">No events yet. Waiting for mission activity.</p>
+    <p id="error-state" role="alert" hidden></p>
+    <ul id="event-timeline" aria-live="polite" aria-label="Mission event timeline">
+    </ul>
+  </section>
+
+</main>
+
+<script>
+  // wireControls: placeholder only. Chuck's local controller will replace/extend
+  // this to attach real behavior to the buttons. It intentionally does nothing
+  // beyond updating the on-page status message.
+  function wireControls() {
+    var status = document.getElementById("controller-status");
+    if (status) {
+      status.textContent = "wireControls() called: no controller attached yet.";
+    }
+  }
+</script>
+
+</body>
+</html>
