@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.py[cod]
+
+# Runtime mission evidence: preserve only intentional fixtures/docs
+state/
+
+# Local environment and credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Editor and OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
