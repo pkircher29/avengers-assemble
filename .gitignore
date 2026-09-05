@@ -21,3 +21,4 @@ claude-workspace/recovery-handoff.md
 .idea/
 .DS_Store
 Thumbs.db
+proxmox-jobs.sqlite3
