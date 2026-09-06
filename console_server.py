@@ -1,5 +1,5 @@
 """Loopback-only local mission console. Explicitly started; no autostart."""
-import argparse, json, subprocess, sys
+import argparse, json, os, subprocess, sys, time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 import mission
@@ -38,6 +38,27 @@ def stop_worker():
     return read_json(STATE / 'status.json', {'state': 'unknown'})
 
 
+def open_native_terminal(agent_id):
+    commands = {
+        'chuck': 'hermes',
+        'claude': f'"{sys.executable}" "{ROOT / "bridge.py"}" launch',
+        'tally': f'"{sys.executable}" "{ROOT / "launch_tally_terminal.py"}"',
+        'antigravity': f'"{os.environ.get("LOCALAPPDATA", "C:/Users/Paul/AppData/Local")}/agy/bin/agy.exe" --dangerously-skip-permissions',
+        'codex': 'codex --dangerously-bypass-approvals-and-sandbox',
+    }
+    if agent_id not in commands:
+        raise ValueError('unknown agent terminal')
+    title = f'Avengers — {agent_id.title()}'
+    wt = os.path.join(os.environ.get('LOCALAPPDATA', ''), 'Microsoft', 'WindowsApps', 'wt.exe')
+    if not os.path.exists(wt):
+        raise ValueError('Windows Terminal launcher is unavailable')
+    subprocess.Popen([wt, 'new-tab', '--title', title, 'cmd.exe', '/k', commands[agent_id]], cwd=ROOT)
+    receipt = {'time': time.time(), 'type': 'terminal_open_requested', 'agent': agent_id, 'title': title, 'command_kind': 'native_terminal'}
+    with (STATE / 'events.jsonl').open('a', encoding='utf-8') as handle:
+        handle.write(json.dumps(receipt) + '\n')
+    return receipt
+
+
 def snapshot():
     rows = []
     events = STATE / 'events.jsonl'
@@ -61,6 +82,9 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         actions={'/api/pause':'pause','/api/resume':'resume','/api/clear':'clear'}
         try:
+            if self.path.startswith('/api/agents/') and self.path.endswith('/terminal/open'):
+                agent_id = self.path.split('/')[3]
+                return self.send_json(200, {'receipt': open_native_terminal(agent_id)})
             if self.path == '/api/stop-worker':
                 return self.send_json(200, {'worker': stop_worker()})
             if self.path not in actions: return self.send_json(404, {'error':'not found'})
