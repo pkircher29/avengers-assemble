@@ -109,6 +109,24 @@ def get_task(state: Path, task_id: str) -> dict:
     return _find_task(_read_tasks(state), task_id)
 
 
+def record_runtime_ack(state: Path, task_id: str, run_id: str, runtime: str, note: str, evidence_ref: str) -> dict:
+    tasks = _read_tasks(state)
+    task = _find_task(tasks, task_id)
+    dispatch = task.get('dispatch')
+    if task['acknowledgement'] is not None:
+        raise ValueError('task already acknowledged')
+    if task['status'] != 'dispatched' or not dispatch:
+        raise ValueError('task must be dispatched before runtime acknowledgement')
+    if dispatch['run_id'] != _validate_text(run_id, 'run id'):
+        raise ValueError('run id does not match task dispatch')
+    if dispatch['runtime'] != _validate_text(runtime, 'runtime'):
+        raise ValueError('runtime does not match task dispatch')
+    task['acknowledgement'] = {'recipient': task['recipient'], 'note': _validate_text(note, 'note'), 'at': _now(), 'origin': 'runtime', 'run_id': run_id, 'evidence_ref': _validate_text(evidence_ref, 'evidence ref')}
+    task['status'] = 'acknowledged'
+    _save(_tasks_path(state), tasks)
+    return task
+
+
 def acknowledge_task(state: Path, task_id: str, recipient: str, note: str) -> dict:
     tasks = _read_tasks(state)
     task = _find_task(tasks, task_id)
