@@ -73,9 +73,34 @@ def create_task(state: Path, *, producer: str, recipient: str, title: str, brief
         'created_at': _now(),
         'acknowledgement': None,
         'handoff_id': None,
+        'dispatch': None,
     }
     tasks = _read_tasks(state)
     tasks.append(task)
+    _save(_tasks_path(state), tasks)
+    return task
+
+
+def claim_dispatch(state: Path, task_id: str, mission_id: str, runtime: str) -> dict:
+    tasks = _read_tasks(state)
+    task = _find_task(tasks, task_id)
+    if task.get('dispatch') is not None:
+        raise ValueError('task already claimed for dispatch')
+    if task['status'] != 'queued':
+        raise ValueError('only queued tasks can be dispatched')
+    task['dispatch'] = {'run_id': task_id, 'mission_id': _validate_text(mission_id, 'mission id'), 'runtime': _validate_text(runtime, 'runtime'), 'claimed_at': _now(), 'launched_at': None, 'error': None}
+    task['status'] = 'dispatching'
+    _save(_tasks_path(state), tasks)
+    return task
+
+
+def mark_dispatched(state: Path, task_id: str) -> dict:
+    tasks = _read_tasks(state)
+    task = _find_task(tasks, task_id)
+    if not task.get('dispatch'):
+        raise ValueError('task has no dispatch claim')
+    task['dispatch']['launched_at'] = _now()
+    task['status'] = 'dispatched'
     _save(_tasks_path(state), tasks)
     return task
 
