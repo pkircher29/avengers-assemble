@@ -5,6 +5,7 @@ __pycache__/
 # Runtime mission evidence: preserve only intentional fixtures/docs
 state/
 ask-claude-*.txt
+agents/openclaw-free/first-conversation.txt
 claude-workspace/dashboard.html
 claude-workspace/test_dashboard.py
 claude-workspace/recovery-handoff.md
