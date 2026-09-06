@@ -1,5 +1,5 @@
 """Loopback-only local mission console. Explicitly started; no autostart."""
-import argparse, json
+import argparse, json, subprocess, sys
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 import mission
@@ -14,6 +14,29 @@ def read_json(path, default):
     try: return json.loads(path.read_text(encoding='utf-8'))
     except (OSError, json.JSONDecodeError): return default
 
+def worker_lifecycle(mission_record, worker):
+    mission_state = (mission_record or {}).get('state')
+    worker_state = worker.get('state', 'not-launched')
+    if mission_state == 'paused':
+        return 'paused'
+    if worker_state == 'working':
+        return 'working'
+    if worker_state == 'blocked':
+        return 'blocked'
+    if worker_state in {'stopped', 'not-launched'}:
+        return 'waiting-to-launch' if mission_state == 'active' else 'stopped'
+    if worker_state == 'waiting-for-chuck':
+        return 'waiting-for-chuck'
+    return 'unknown'
+
+
+def stop_worker():
+    result = subprocess.run([sys.executable, str(ROOT / 'bridge.py'), 'stop'], cwd=ROOT, capture_output=True, text=True, timeout=20)
+    if result.returncode != 0:
+        raise ValueError(result.stderr.strip() or result.stdout.strip() or 'worker stop failed')
+    return read_json(STATE / 'status.json', {'state': 'unknown'})
+
+
 def snapshot():
     rows = []
     events = STATE / 'events.jsonl'
@@ -21,7 +44,9 @@ def snapshot():
         for line in events.read_text(encoding='utf-8').splitlines()[-40:]:
             try: rows.append(json.loads(line))
             except json.JSONDecodeError: pass
-    return {'mission': mission.load(MISSION), 'worker': read_json(STATE/'status.json', {'state':'not-launched'}), 'events': rows,
+    mission_record = mission.load(MISSION)
+    worker = read_json(STATE/'status.json', {'state':'not-launched'})
+    return {'mission': mission_record, 'worker': worker, 'worker_lifecycle': worker_lifecycle(mission_record, worker), 'events': rows,
             'scope_boundary':'Local-only V0: Chuck + Claude; no public listener, peer bus, or automatic dispatch.'}
 
 class Handler(BaseHTTPRequestHandler):
@@ -34,8 +59,11 @@ class Handler(BaseHTTPRequestHandler):
         data=DASHBOARD.read_bytes(); self.send_response(200); self.send_header('Content-Type','text/html; charset=utf-8'); self.send_header('Content-Length',str(len(data))); self.end_headers(); self.wfile.write(data)
     def do_POST(self):
         actions={'/api/pause':'pause','/api/resume':'resume','/api/clear':'clear'}
-        if self.path not in actions: return self.send_json(404, {'error':'not found'})
-        try: result=mission.transition(MISSION, actions[self.path]); self.send_json(200, {'mission':result})
+        try:
+            if self.path == '/api/stop-worker':
+                return self.send_json(200, {'worker': stop_worker()})
+            if self.path not in actions: return self.send_json(404, {'error':'not found'})
+            result=mission.transition(MISSION, actions[self.path]); self.send_json(200, {'mission':result})
         except ValueError as exc: self.send_json(409, {'error':str(exc)})
 
 def main():

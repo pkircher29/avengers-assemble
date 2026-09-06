@@ -258,7 +258,7 @@
       var worker = data.worker || {};
       show('mission-objective', mission.objective || 'No active mission.');
       show('mission-state', mission.state || 'idle');
-      show('worker-state', worker.state || 'not-launched');
+      show('worker-state', data.worker_lifecycle || worker.state || 'not-launched');
       show('scope-boundary', data.scope_boundary);
       var claude = (mission.participants || []).find(function(p) { return p.name === 'Claude'; }) || {};
       show('requested-model', worker.requested_model || claude.requested_model);
@@ -268,7 +268,7 @@
       var timeline = document.getElementById('event-timeline'); timeline.innerHTML = '';
       (data.events || []).slice().reverse().forEach(function(e) { var item=document.createElement('li'); item.textContent=(e.type || 'event') + ': ' + (e.text || e.note || e.reason || 'recorded'); timeline.appendChild(item); });
       document.getElementById('empty-state').hidden = Boolean((data.events || []).length);
-      ['btn-refresh','btn-pause','btn-resume','btn-stop'].forEach(function(id) { document.getElementById(id).disabled = id === 'btn-stop'; });
+      ['btn-refresh','btn-pause','btn-resume','btn-stop'].forEach(function(id) { document.getElementById(id).disabled = false; });
       status.textContent = 'Local controller connected. Refreshed from durable state.';
     } catch (err) { document.getElementById('error-state').hidden=false; document.getElementById('error-state').textContent='Controller error: '+err.message; status.textContent='Controller unavailable.'; }
   }
@@ -277,6 +277,7 @@
     document.getElementById('btn-refresh').onclick=refresh;
     document.getElementById('btn-pause').onclick=function(){action('pause')};
     document.getElementById('btn-resume').onclick=function(){action('resume')};
+    document.getElementById('btn-stop').onclick=function(){action('stop-worker')};
     refresh();
   }
   wireControls();
