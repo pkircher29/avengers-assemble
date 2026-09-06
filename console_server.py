@@ -46,6 +46,23 @@ def stop_worker():
     return read_json(STATE / 'status.json', {'state': 'unknown'})
 
 
+def open_task_terminal(task_id):
+    task = coordination.get_task(STATE, task_id)
+    agent_id = task['recipient']
+    if agent_id not in {'claude', 'tally', 'antigravity', 'codex'}:
+        raise ValueError('task recipient has no directed terminal adapter')
+    title = f'Avengers — {agent_id.title()} — {task_id[:8]}'
+    wt = os.path.join(os.environ.get('LOCALAPPDATA', ''), 'Microsoft', 'WindowsApps', 'wt.exe')
+    if not os.path.exists(wt):
+        raise ValueError('Windows Terminal launcher is unavailable')
+    command = f'"{sys.executable}" "{ROOT / "launch_adapter_terminal.py"}" {agent_id} {task_id}'
+    subprocess.Popen([wt, 'new-tab', '--title', title, 'cmd.exe', '/k', command], cwd=ROOT)
+    receipt = {'time': time.time(), 'type': 'directed_terminal_open_requested', 'agent': agent_id, 'task_id': task_id, 'title': title, 'command_kind': 'task_directed_native_terminal'}
+    with (STATE / 'events.jsonl').open('a', encoding='utf-8') as handle:
+        handle.write(json.dumps(receipt) + '\n')
+    return receipt
+
+
 def open_native_terminal(agent_id):
     commands = {
         'chuck': 'hermes',
@@ -87,6 +104,9 @@ class Handler(BaseHTTPRequestHandler):
         data=json.dumps(body).encode(); self.send_response(code); self.send_header('Content-Type','application/json'); self.send_header('Content-Length',str(len(data))); self.end_headers(); self.wfile.write(data)
     def do_GET(self):
         if self.path == '/api/snapshot': return self.send_json(200, snapshot())
+        if self.path == '/api/comms':
+            data = snapshot()
+            return self.send_json(200, {'generated_at': data['generated_at'], 'events': data['events'], 'source': 'durable controller event log'})
         if self.path != '/': return self.send_json(404, {'error':'not found'})
         data=DASHBOARD.read_bytes(); self.send_response(200); self.send_header('Content-Type','text/html; charset=utf-8'); self.send_header('Content-Length',str(len(data))); self.end_headers(); self.wfile.write(data)
     def do_POST(self):
@@ -105,6 +125,8 @@ class Handler(BaseHTTPRequestHandler):
             if len(parts) == 4 and parts[:2] == ['api', 'tasks'] and parts[3] == 'handoffs':
                 handoff = coordination.submit_handoff(STATE, parts[2], **payload)
                 return self.send_json(201, {'handoff': handoff})
+            if len(parts) == 5 and parts[:2] == ['api', 'tasks'] and parts[3:] == ['terminal', 'open']:
+                return self.send_json(200, {'receipt': open_task_terminal(parts[2])})
             if len(parts) == 4 and parts[:2] == ['api', 'tasks'] and parts[3] == 'dispatch':
                 adapters={'claude':ClaudeAdapter,'codex':CodexAdapter,'tally':TallyAdapter,'antigravity':AntigravityAdapter}
                 task=coordination.get_task(STATE,parts[2]); adapter_class=adapters.get(task['recipient'])
