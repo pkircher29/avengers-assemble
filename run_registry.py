@@ -1,4 +1,4 @@
-import json, os, time, uuid
+import json, os, time, uuid, subprocess
 from pathlib import Path
 def _path(state): return Path(state)/'coordination'/'runs.json'
 def _save(path,data):
@@ -7,6 +7,15 @@ def register(state,run_id,runtime,pid):
  path=_path(state); rows=json.loads(path.read_text()) if path.exists() else {}; record={'run_id':run_id,'runtime':runtime,'pid':pid,'state':'running','started_at':time.time()}; rows[run_id]=record; _save(path,rows); return record
 def get(state,run_id):
  path=_path(state); rows=json.loads(path.read_text()) if path.exists() else {}; return rows.get(run_id)
+def reconcile(state):
+ path=_path(state); rows=json.loads(path.read_text()) if path.exists() else {}; changed=False
+ for record in rows.values():
+  if record.get('state')=='running':
+   alive=subprocess.run(['tasklist','/FI','PID eq '+str(record['pid'])],capture_output=True,text=True).returncode==0
+   if not alive: record.update(state='orphaned',reconciled_at=time.time()); changed=True
+ if changed: _save(path,rows)
+ return list(rows.values())
+
 def update(root,run_id,**changes):
  path=_path(root); rows=json.loads(path.read_text()) if path.exists() else {}; record=rows.get(run_id)
  if not record: raise ValueError('unknown managed run')
