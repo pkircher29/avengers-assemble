@@ -1,6 +1,8 @@
 """Codex adapter: collect verified JSONL output before runtime acknowledgement."""
 import json
 from pathlib import Path
+import shutil
+import subprocess
 
 import coordination
 
@@ -8,14 +10,22 @@ import coordination
 class CodexAdapter:
     runtime = 'codex'
 
-    def __init__(self, state: Path, process_factory=None):
+    def __init__(self, state: Path, process_factory=None, workspace=None):
         self.state = Path(state)
         self.process_factory = process_factory
+        self.workspace = Path(workspace) if workspace else Path.home() / 'GITHUB' / 'avengers-codex-readonly'
 
     def launch(self, task, dispatch):
-        if self.process_factory is None:
-            raise ValueError('Codex process launcher is not configured')
-        return {'process': self.process_factory([])}
+        prompt = ('You are Codex, a bounded read-only worker directed by Chuck for Paul. Do not edit files, '
+                  'do not use network, do not read credentials, and do not delegate. Reply with a concise factual '
+                  'acknowledgement of this exact task only. Task title: ' + task['title'] + '. Brief: ' + task['brief'] +
+                  '. Requested action: ' + task['requested_action'])
+        command = [shutil.which('codex') or 'codex', 'exec', '--json', '--ephemeral', '--sandbox', 'read-only',
+                   '--config', 'mcp_servers={}', '--ignore-rules', '--color', 'never', prompt]
+        if self.process_factory is not None:
+            return {'process': self.process_factory(command)}
+        return {'process': subprocess.Popen(command, cwd=self.workspace, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                             text=True, encoding='utf-8', errors='replace')}
 
     def collect(self, task, dispatch, handle):
         stdout, stderr = handle['process'].communicate(timeout=600)
