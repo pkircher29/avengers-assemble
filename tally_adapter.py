@@ -5,6 +5,7 @@ import shutil
 import subprocess
 
 import coordination
+import run_registry
 
 
 class TallyAdapter:
@@ -24,8 +25,10 @@ class TallyAdapter:
                    '--model', 'tally-granite/granite4.2:8b', '--thinking', 'off', '--timeout', '600', '--json', '--message', prompt]
         if self.process_factory is not None:
             return {'process': self.process_factory(command)}
-        return {'process': subprocess.Popen(command, cwd=self.workspace, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                                             text=True, encoding='utf-8', errors='replace')}
+        proc = subprocess.Popen(command, cwd=self.workspace, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                             text=True, encoding='utf-8', errors='replace')
+        run_registry.register(self.state, dispatch['run_id'], self.runtime, proc.pid)
+        return {'process': proc}
 
     def collect(self, task, dispatch, handle):
         stdout, stderr = handle['process'].communicate(timeout=600)

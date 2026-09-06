@@ -2,6 +2,7 @@
 import json, os, shutil, subprocess
 from pathlib import Path
 import coordination
+import run_registry
 
 
 class AntigravityAdapter:
@@ -15,7 +16,9 @@ class AntigravityAdapter:
         exe = os.path.join(os.environ.get('LOCALAPPDATA', ''), 'agy', 'bin', 'agy.exe')
         command = [exe if os.path.exists(exe) else (shutil.which('agy') or 'agy'), '--dangerously-skip-permissions', '--disable-slash-commands', '--output-format', 'json', '--effort', 'medium', '-p', prompt]
         if self.process_factory: return {'process': self.process_factory(command)}
-        return {'process': subprocess.Popen(command, cwd=self.workspace, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding='utf-8', errors='replace')}
+        proc = subprocess.Popen(command, cwd=self.workspace, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding='utf-8', errors='replace')
+        run_registry.register(self.state, dispatch['run_id'], self.runtime, proc.pid)
+        return {'process': proc}
 
     def collect(self, task, dispatch, handle):
         stdout, stderr = handle['process'].communicate(timeout=600)

@@ -2,6 +2,7 @@
 import json, shutil, subprocess
 from pathlib import Path
 import coordination
+import run_registry
 
 class ClaudeAdapter:
     runtime='claude'
@@ -9,7 +10,9 @@ class ClaudeAdapter:
     def launch(self,task,dispatch):
         prompt='You are Claude, a bounded read-only worker directed by Chuck. Do not edit files, use network, read credentials, or delegate. Reply with a concise acknowledgement only. Task title: '+task['title']+'. Brief: '+task['brief']
         cmd=[shutil.which('claude') or 'claude','--safe-mode','-p','--dangerously-skip-permissions','--output-format','json','--max-turns','1','--model','sonnet','--effort','low',prompt]
-        return {'process':subprocess.Popen(cmd,cwd=self.workspace,stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True,encoding='utf-8',errors='replace')}
+        proc=subprocess.Popen(cmd,cwd=self.workspace,stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True,encoding='utf-8',errors='replace')
+        run_registry.register(self.state,dispatch['run_id'],self.runtime,proc.pid)
+        return {'process':proc}
     def collect(self,task,dispatch,handle):
         out,err=handle['process'].communicate(timeout=300); evidence=self.state/'coordination'/'runtime'/(task['id']+'.json'); evidence.parent.mkdir(parents=True,exist_ok=True)
         try: result=json.loads(out)
