@@ -122,6 +122,82 @@ class TelemetryTests(unittest.TestCase):
         self.session([{'type':'session.started','data':{'prompt':'SECRET'}}])
         self.assertUnavailable(telemetry.tally_telemetry()['session_file'])
 
+    def test_capabilities_and_registry_evidence_for_every_agent(self):
+        for agent in telemetry.build_roster():
+            facts = agent['telemetry']
+            self.assertEqual(facts['evidence_source']['registry'], str(telemetry.REGISTRY))
+            for key in ('terminal_capability', 'control_capability'):
+                self.assertTrue(facts[key]['evidence_source'])
+                if facts[key]['state'] == 'unavailable':
+                    self.assertUnavailable(facts[key])
+            self.assertEqual(agent['controls'], facts['control_capability']['actions'])
+        claude = next(a for a in telemetry.build_roster() if a['id'] == 'claude')
+        self.assertEqual(claude['controls'], ['stop'])
+        self.assertEqual(claude['control_capability']['endpoint'], '/api/stop-worker')
+
+    def test_malformed_capabilities_fail_closed(self):
+        registry = self.root / 'registry.json'
+        for bad in (None, [], {}, {'state': 'unknown'},
+                    {'state': 'supported', 'actions': 'stop', 'endpoint': '/stop'},
+                    {'state': 'supported', 'actions': ['stop']},
+                    {'state': 'unavailable', 'reason': '', 'actions': ['stop']}):
+            with self.subTest(capability=bad):
+                self.write(registry, {'agents': [{'id': 'other', 'terminal': None,
+                           'controls': ['stop'], 'control_capability': bad}]})
+                with patch.object(telemetry, 'REGISTRY', registry):
+                    agent = telemetry.build_roster()[0]
+                self.assertUnavailable(agent['telemetry']['terminal_capability'])
+                self.assertUnavailable(agent['telemetry']['control_capability'])
+                self.assertEqual(agent['controls'], [])
+
+    def test_cost_overflow_keeps_per_record_evidence(self):
+        for name in ('a', 'b'):
+            self.write(self.state / f'results/{name}.json', {'total_cost_usd': 1e308})
+        usage = telemetry.claude_telemetry()['usage']
+        self.assertUnavailable(usage['reported_cost_usd'])
+        self.assertEqual(usage['coverage']['cost_records'], 2)
+        self.assertEqual(usage['records'][0]['reported_cost_usd'], 1e308)
+        json.dumps(usage, allow_nan=False)
+
+    def test_large_integer_metadata_does_not_crash(self):
+        tokens = 10 ** 400
+        self.write(self.state / 'results/a.json', {
+            'total_cost_usd': tokens, 'usage': {'input_tokens': tokens}})
+        usage = telemetry.claude_telemetry()['usage']
+        self.assertEqual(usage['token_usage'], {'input_tokens': tokens})
+        self.assertEqual(usage['reported_cost_usd'], tokens)
+        self.write(self.state / 'results/b.json', {'total_cost_usd': 0.5})
+        usage = telemetry.claude_telemetry()['usage']
+        self.assertUnavailable(usage['reported_cost_usd'])
+        json.dumps(usage, allow_nan=False)
+
+    def test_empty_request_id_is_not_current_work(self):
+        self.write(self.state / 'status.json', {'state': 'working', 'request_id': '  '})
+        self.assertUnavailable(telemetry.claude_telemetry()['current_work'])
+
+    def test_replayed_tally_response_cannot_confirm_new_model_selection(self):
+        message = {'type': 'message', 'id': 'm1', 'message': {
+            'role': 'assistant', 'model': 'old-model', 'reasoningEffort': 'low',
+            'usage': {'input': 2}}}
+        self.session([{'type': 'session', 'id': 's'}, message,
+                      {'type': 'model_change', 'modelId': 'new-model'},
+                      {'type': 'thinking_level_change', 'thinkingLevel': 'high'}, message])
+        result = telemetry.tally_telemetry()
+        self.assertEqual(result['requested_model'], 'new-model')
+        self.assertEqual(result['requested_effort'], 'high')
+        self.assertUnavailable(result['effective_model'])
+        self.assertUnavailable(result['effective_effort'])
+        self.assertEqual(result['usage']['token_usage'], {'input': 2})
+
+    def test_tally_actual_effort_and_zero_tokens_are_preserved(self):
+        self.session([{'type': 'session', 'id': 's'}, {'type': 'message', 'message': {
+            'role': 'assistant', 'model': 'actual', 'reasoningEffort': 'medium',
+            'usage': {'input': 0, 'output': 0}, 'prompt': 'SECRET'}}])
+        result = telemetry.tally_telemetry()
+        self.assertEqual(result['effective_effort'], 'medium')
+        self.assertEqual(result['usage']['token_usage'], {'input': 0, 'output': 0})
+        self.assertNotIn('SECRET', json.dumps(result))
+
 
 if __name__ == '__main__':
     unittest.main()

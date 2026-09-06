@@ -47,7 +47,8 @@ def text_value(value, reason):
 
 
 def number(value):
-    return type(value) in (int, float) and math.isfinite(value) and value >= 0
+    return (type(value) is int and value >= 0 or
+            type(value) is float and math.isfinite(value) and value >= 0)
 
 
 def safe_fields(record, keys):
@@ -89,9 +90,14 @@ def usage_summary(items, scope):
                 coverage[key] = coverage.get(key, 0) + 1
         if number(item['reported_cost_usd']):
             costs.append(item['reported_cost_usd'])
+    try:
+        cost_total = sum(costs) if costs else None
+    except OverflowError:
+        cost_total = None
     return {'scope': scope, 'record_count': len(items), 'records': items,
             'token_usage': totals or unavailable('No token metadata reported.'),
-            'reported_cost_usd': sum(costs) if costs else unavailable('No actual cost metadata reported.'),
+            'reported_cost_usd': cost_total if number(cost_total) else unavailable(
+                'Reported cost total exceeds numeric range.' if costs else 'No actual cost metadata reported.'),
             'coverage': {'token_records': coverage, 'cost_records': len(costs)}}
 
 
@@ -102,7 +108,8 @@ def claude_telemetry():
     for key in ('requested_model', 'effective_model', 'requested_effort', 'effective_effort', 'session_id'):
         result[key] = text_value(status.get(key), 'No recorded ' + key + '.')
     result['raw_state'] = text_value(status.get('state'), 'No worker state recorded.')
-    if status.get('state') == 'working' and isinstance(status.get('request_id'), str):
+    if (status.get('state') == 'working' and isinstance(status.get('request_id'), str)
+            and status['request_id'].strip()):
         result['current_work'] = {'request_id': status['request_id'], 'evidence_source': str(status_path)}
     else:
         result['current_work'] = unavailable('No active request recorded in worker status.')
@@ -160,8 +167,6 @@ def tally_telemetry():
             message = row.get('message')
             if not isinstance(message, dict) or message.get('role') != 'assistant':
                 continue
-            result['effective_model'] = text_value(message.get('model'), 'Response model absent.')
-            result['effective_effort'] = text_value(message.get('reasoningEffort'), 'Response does not report effective effort.')
             identity = message.get('responseId') or row.get('id')
             if isinstance(identity, str):
                 if identity in seen:
@@ -169,10 +174,40 @@ def tally_telemetry():
                 seen.add(identity)
             else:
                 identity = None
+            # Replayed responses are not evidence for a later model selection.
+            result['effective_model'] = text_value(message.get('model'), 'Response model absent.')
+            result['effective_effort'] = text_value(message.get('reasoningEffort'), 'Response does not report effective effort.')
             items.append(usage_record(message, source, identity, tally=True))
     result['usage'] = usage_summary(items, 'Latest canonical Tally session; trace sidecars excluded to avoid double counting.')
     result['current_work'] = unavailable('Session history does not establish currently active work.')
     result['raw_state'] = unavailable('Session history does not establish live worker state.')
+    return result
+
+
+def capability(value, terminal=False):
+    """Normalize registry declarations without treating a CLI as an attach API."""
+    result = dict(value) if isinstance(value, dict) else {}
+    state = result.get('state', result.get('availability') if terminal else None)
+    if state not in ('supported', 'unavailable'):
+        state = 'unavailable'
+        result['reason'] = 'No verified capability registered.'
+    result['state'] = state
+    if terminal:
+        result['availability'] = state
+    if state == 'unavailable':
+        if not isinstance(result.get('reason'), str) or not result['reason'].strip():
+            result['reason'] = 'No verified capability registered.'
+        if not terminal:
+            result['actions'] = []
+    elif not terminal:
+        actions = result.get('actions')
+        if (not isinstance(actions, list) or not actions or
+                any(not isinstance(action, str) or not action.strip() for action in actions)
+                or not isinstance(result.get('endpoint'), str) or not result['endpoint'].strip()):
+            result.update(unavailable('No verified control actions and endpoint registered.'))
+            result['actions'] = []
+    if not isinstance(result.get('evidence_source'), str) or not result['evidence_source'].strip():
+        result['evidence_source'] = str(REGISTRY)
     return result
 
 
@@ -190,11 +225,11 @@ def build_roster():
             facts = tally_telemetry()
         else:
             facts = empty_telemetry('Adapter does not have a verified telemetry bridge.')
-        terminal = agent.get('terminal')
-        item['terminal'] = terminal if isinstance(terminal, dict) else unavailable('No terminal capability registered.')
-        item['controls'] = agent.get('controls', [])
-        item['control_capability'] = agent.get('control_capability', unavailable('No verified control endpoint registered.'))
+        item['terminal'] = capability(agent.get('terminal'), terminal=True)
+        item['control_capability'] = capability(agent.get('control_capability'))
+        item['controls'] = item['control_capability'].get('actions', [])
         item['evidence_source'] = {'registry': str(REGISTRY), 'runtime': facts['evidence_source']}
+        facts['evidence_source'] = item['evidence_source']
         facts['terminal_capability'] = item['terminal']
         facts['control_capability'] = item['control_capability']
         item['telemetry'] = facts

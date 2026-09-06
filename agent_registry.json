@@ -11,13 +11,16 @@
         "kind": "current-session",
         "availability": "unavailable",
         "reason": "No browser PTY bridge is implemented.",
-        "evidence_source": "agent_registry.json"
+        "evidence_source": "agent_registry.json",
+        "state": "unavailable"
       },
       "controls": [],
       "evidence": "Current Hermes session; dashboard control plane source.",
       "control_capability": {
         "state": "unavailable",
-        "reason": "No verified adapter control endpoint."
+        "reason": "No verified adapter control endpoint.",
+        "evidence_source": "agent_registry.json",
+        "actions": []
       }
     },
     {
@@ -32,7 +35,8 @@
         "title": "Avengers Prototype - Claude - directed by Chuck",
         "availability": "unavailable",
         "evidence_source": "agent_registry.json",
-        "reason": "Native console launch exists; no verified open/focus/attach endpoint or live handle."
+        "reason": "Native console launch exists; no verified open/focus/attach endpoint or live handle.",
+        "state": "unavailable"
       },
       "controls": [
         "stop"
@@ -59,13 +63,16 @@
         "kind": "local-agent-turn",
         "availability": "unavailable",
         "reason": "No verified persistent PTY/session attach bridge.",
-        "evidence_source": "agent_registry.json"
+        "evidence_source": "agent_registry.json",
+        "state": "unavailable"
       },
       "controls": [],
       "evidence": "OpenClaw profile/session metadata; backup and safe tool policy incomplete.",
       "control_capability": {
         "state": "unavailable",
-        "reason": "No verified adapter control endpoint."
+        "reason": "No verified adapter control endpoint.",
+        "evidence_source": "agent_registry.json",
+        "actions": []
       }
     },
     {
@@ -79,13 +86,16 @@
         "kind": "native-cli",
         "availability": "unavailable",
         "reason": "No completed adapter proof or session bridge.",
-        "evidence_source": "agent_registry.json"
+        "evidence_source": "agent_registry.json",
+        "state": "unavailable"
       },
       "controls": [],
       "evidence": "agy.exe installed; model catalog verified; worker proof pending.",
       "control_capability": {
         "state": "unavailable",
-        "reason": "No verified adapter control endpoint."
+        "reason": "No verified adapter control endpoint.",
+        "evidence_source": "agent_registry.json",
+        "actions": []
       }
     },
     {
@@ -99,13 +109,16 @@
         "kind": "native-cli",
         "availability": "unavailable",
         "reason": "Windows sandbox child process creation denied.",
-        "evidence_source": "agent_registry.json"
+        "evidence_source": "agent_registry.json",
+        "state": "unavailable"
       },
       "controls": [],
       "evidence": "Codex Doctor and read-only tool execution repair gate.",
       "control_capability": {
         "state": "unavailable",
-        "reason": "No verified adapter control endpoint."
+        "reason": "No verified adapter control endpoint.",
+        "evidence_source": "agent_registry.json",
+        "actions": []
       }
     }
   ],
