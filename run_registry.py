@@ -7,3 +7,7 @@ def register(state,run_id,runtime,pid):
  path=_path(state); rows=json.loads(path.read_text()) if path.exists() else {}; record={'run_id':run_id,'runtime':runtime,'pid':pid,'state':'running','started_at':time.time()}; rows[run_id]=record; _save(path,rows); return record
 def get(state,run_id):
  path=_path(state); rows=json.loads(path.read_text()) if path.exists() else {}; return rows.get(run_id)
+def update(root,run_id,**changes):
+ path=_path(root); rows=json.loads(path.read_text()) if path.exists() else {}; record=rows.get(run_id)
+ if not record: raise ValueError('unknown managed run')
+ record.update(changes); rows[run_id]=record; _save(path,rows); return record
