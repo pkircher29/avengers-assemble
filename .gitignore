@@ -6,6 +6,7 @@ __pycache__/
 state/
 ask-claude-*.txt
 agents/openclaw-free/first-conversation.txt
+agents/openclaw-free/tally-first-task.txt
 claude-workspace/dashboard.html
 claude-workspace/test_dashboard.py
 claude-workspace/recovery-handoff.md
