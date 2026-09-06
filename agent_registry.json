@@ -80,17 +80,19 @@
       "name": "Antigravity",
       "role": "candidate worker",
       "adapter": "agy",
-      "lifecycle": "adapter-proof-pending",
+      "lifecycle": "adapter-verified",
       "workspace": "C:/Users/Paul/GITHUB/avengers-antigravity-readonly",
       "terminal": {
         "kind": "native-cli",
-        "availability": "unavailable",
-        "reason": "No completed adapter proof or session bridge.",
-        "evidence_source": "agent_registry.json",
-        "state": "unavailable"
+        "availability": "supported",
+        "reason": "Verified print-mode turn and loopback native-terminal launch; browser PTY attachment is not implemented.",
+        "evidence_source": "agy.exe print-mode result 2026-09-06 and console terminal launch receipt",
+        "state": "supported"
       },
-      "controls": [],
-      "evidence": "agy.exe installed; model catalog verified; worker proof pending.",
+      "controls": [
+        "open-native-terminal"
+      ],
+      "evidence": "agy.exe returned ANTIGRAVITY_LIVE_OK with a real conversation ID; native terminal launch created agy.exe process.",
       "control_capability": {
         "state": "unavailable",
         "reason": "No verified adapter control endpoint.",
@@ -103,17 +105,19 @@
       "name": "Codex",
       "role": "candidate worker",
       "adapter": "codex-cli",
-      "lifecycle": "blocked",
+      "lifecycle": "adapter-verified",
       "workspace": "C:/Users/Paul/GITHUB/avengers-codex-readonly",
       "terminal": {
         "kind": "native-cli",
-        "availability": "unavailable",
-        "reason": "Windows sandbox child process creation denied.",
-        "evidence_source": "agent_registry.json",
-        "state": "unavailable"
+        "availability": "supported",
+        "reason": "Verified foreground isolated run with mcp_servers override and loopback native-terminal launch; browser PTY attachment is not implemented.",
+        "evidence_source": "Codex foreground print-mode result 2026-09-06 and console terminal launch receipt",
+        "state": "supported"
       },
-      "controls": [],
-      "evidence": "Codex Doctor and read-only tool execution repair gate.",
+      "controls": [
+        "open-native-terminal"
+      ],
+      "evidence": "Codex returned CODEX_LIVE_OK under --config mcp_servers={}; global Stripe MCP OAuth warning remains non-blocking configuration debt.",
       "control_capability": {
         "state": "unavailable",
         "reason": "No verified adapter control endpoint.",
