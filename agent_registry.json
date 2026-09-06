@@ -7,9 +7,21 @@
       "adapter": "hermes",
       "lifecycle": "active",
       "workspace": "C:/Users/Paul/GITHUB/avengers-assemble-prototype",
-      "terminal": {"kind": "current-session", "availability": "unavailable", "reason": "No browser PTY bridge is implemented."},
+      "terminal": {
+        "kind": "current-session",
+        "availability": "unavailable",
+        "reason": "No browser PTY bridge is implemented.",
+        "evidence_source": "agent_registry.json",
+        "state": "unavailable"
+      },
       "controls": [],
-      "evidence": "Current Hermes session; dashboard control plane source."
+      "evidence": "Current Hermes session; dashboard control plane source.",
+      "control_capability": {
+        "state": "unavailable",
+        "reason": "No verified adapter control endpoint.",
+        "evidence_source": "agent_registry.json",
+        "actions": []
+      }
     },
     {
       "id": "claude",
@@ -18,9 +30,27 @@
       "adapter": "claude-code",
       "lifecycle": "adapter-verified",
       "workspace": "C:/Users/Paul/GITHUB/avengers-assemble-prototype/claude-workspace",
-      "terminal": {"kind": "native-console", "title": "Avengers Prototype - Claude - directed by Chuck", "availability": "supported"},
-      "controls": ["stop"],
-      "evidence": "bridge.py state/events/results"
+      "terminal": {
+        "kind": "native-console",
+        "title": "Avengers Prototype - Claude - directed by Chuck",
+        "availability": "unavailable",
+        "evidence_source": "agent_registry.json",
+        "reason": "Native console launch exists; no verified open/focus/attach endpoint or live handle.",
+        "state": "unavailable"
+      },
+      "controls": [
+        "stop"
+      ],
+      "evidence": "bridge.py state/events/results",
+      "control_capability": {
+        "state": "supported",
+        "actions": [
+          "stop"
+        ],
+        "endpoint": "/api/stop-worker",
+        "evidence_source": "console_server.py and bridge.py stop-file handling",
+        "reason": "Stop request only; success requires observed worker state."
+      }
     },
     {
       "id": "tally",
@@ -29,9 +59,21 @@
       "adapter": "openclaw",
       "lifecycle": "foundation-created",
       "workspace": "C:/Users/Paul/GITHUB/avengers-openclaw-free-workspace",
-      "terminal": {"kind": "local-agent-turn", "availability": "unavailable", "reason": "No verified persistent PTY/session attach bridge."},
+      "terminal": {
+        "kind": "local-agent-turn",
+        "availability": "unavailable",
+        "reason": "No verified persistent PTY/session attach bridge.",
+        "evidence_source": "agent_registry.json",
+        "state": "unavailable"
+      },
       "controls": [],
-      "evidence": "OpenClaw profile/session metadata; backup and safe tool policy incomplete."
+      "evidence": "OpenClaw profile/session metadata; backup and safe tool policy incomplete.",
+      "control_capability": {
+        "state": "unavailable",
+        "reason": "No verified adapter control endpoint.",
+        "evidence_source": "agent_registry.json",
+        "actions": []
+      }
     },
     {
       "id": "antigravity",
@@ -40,9 +82,21 @@
       "adapter": "agy",
       "lifecycle": "adapter-proof-pending",
       "workspace": "C:/Users/Paul/GITHUB/avengers-antigravity-readonly",
-      "terminal": {"kind": "native-cli", "availability": "unavailable", "reason": "No completed adapter proof or session bridge."},
+      "terminal": {
+        "kind": "native-cli",
+        "availability": "unavailable",
+        "reason": "No completed adapter proof or session bridge.",
+        "evidence_source": "agent_registry.json",
+        "state": "unavailable"
+      },
       "controls": [],
-      "evidence": "agy.exe installed; model catalog verified; worker proof pending."
+      "evidence": "agy.exe installed; model catalog verified; worker proof pending.",
+      "control_capability": {
+        "state": "unavailable",
+        "reason": "No verified adapter control endpoint.",
+        "evidence_source": "agent_registry.json",
+        "actions": []
+      }
     },
     {
       "id": "codex",
@@ -51,9 +105,22 @@
       "adapter": "codex-cli",
       "lifecycle": "blocked",
       "workspace": "C:/Users/Paul/GITHUB/avengers-codex-readonly",
-      "terminal": {"kind": "native-cli", "availability": "unavailable", "reason": "Windows sandbox child process creation denied."},
+      "terminal": {
+        "kind": "native-cli",
+        "availability": "unavailable",
+        "reason": "Windows sandbox child process creation denied.",
+        "evidence_source": "agent_registry.json",
+        "state": "unavailable"
+      },
       "controls": [],
-      "evidence": "Codex Doctor and read-only tool execution repair gate."
+      "evidence": "Codex Doctor and read-only tool execution repair gate.",
+      "control_capability": {
+        "state": "unavailable",
+        "reason": "No verified adapter control endpoint.",
+        "evidence_source": "agent_registry.json",
+        "actions": []
+      }
     }
-  ]
+  ],
+  "schema_version": 1
 }
