@@ -168,6 +168,8 @@
   .agent-card dd { font-size: 0.85rem; font-weight: 500; word-break: break-word; }
 
   .agent-card-terminal { border-top: 1px solid var(--panel-border); padding-top: 0.5rem; margin-top: 0.25rem; }
+  .agent-card-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem; }
+  .agent-card-receipt { color: var(--text-dim); font-size: 0.78rem; margin: 0; }
 
   .badge {
     display: inline-block;
@@ -351,6 +353,20 @@
     var tokens = (usage.token_usage !== undefined) ? value(usage.token_usage) : 'unavailable';
     return 'cost ' + cost + ', tokens ' + tokens;
   }
+  async function requestNativeTerminal(agent, button, receipt) {
+    button.disabled = true;
+    receipt.textContent = 'Opening native terminal…';
+    try {
+      var response = await fetch('/api/agents/' + encodeURIComponent(agent.id) + '/terminal/open', {method: 'POST'});
+      var body = await response.json();
+      if (!response.ok) throw new Error(body.error || 'terminal request failed');
+      receipt.textContent = 'Native terminal launch requested at ' + new Date(body.receipt.time * 1000).toLocaleTimeString() + '.';
+    } catch (error) {
+      receipt.textContent = 'Terminal not opened: ' + error.message;
+    } finally {
+      button.disabled = false;
+    }
+  }
   function renderRoster(data) {
     var roster = data.roster || [];
     var root = document.getElementById('agent-roster'); root.innerHTML = '';
@@ -389,6 +405,12 @@
       var termNote = document.createElement('p'); termNote.className = 'agent-card-role';
       termNote.textContent = terminal.reason || 'native session evidence available';
       termWrap.appendChild(termNote);
+      var actions = document.createElement('div'); actions.className = 'agent-card-actions';
+      var openButton = document.createElement('button'); openButton.type = 'button'; openButton.textContent = 'Open native terminal';
+      openButton.setAttribute('aria-label', 'Open native terminal for ' + agent.name);
+      var receipt = document.createElement('p'); receipt.className = 'agent-card-receipt'; receipt.setAttribute('role', 'status');
+      openButton.addEventListener('click', function() { requestNativeTerminal(agent, openButton, receipt); });
+      actions.appendChild(openButton); actions.appendChild(receipt); termWrap.appendChild(actions);
       card.appendChild(termWrap);
 
       root.appendChild(card);
