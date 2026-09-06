@@ -10,6 +10,7 @@ agents/openclaw-free/tally-first-task.txt
 claude-workspace/dashboard.html
 claude-workspace/test_dashboard.py
 claude-workspace/recovery-handoff.md
+claude-workspace/claude-bypass-adapter-proof.json
 
 # Local environment and credentials
 .env
