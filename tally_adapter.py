@@ -29,15 +29,17 @@ class TallyAdapter:
 
     def collect(self, task, dispatch, handle):
         stdout, stderr = handle['process'].communicate(timeout=600)
+        evidence = self.state / 'coordination' / 'runtime' / (task['id'] + '.json')
+        evidence.parent.mkdir(parents=True, exist_ok=True)
         try:
             result = json.loads(stdout)
         except (TypeError, ValueError) as exc:
-            raise ValueError('Tally runner did not return a JSON result') from exc
+            evidence.write_text(json.dumps({'stdout': stdout, 'stderr': stderr, 'returncode': getattr(handle['process'], 'returncode', None), 'parse_error': str(exc)}, indent=2), encoding='utf-8')
+            raise ValueError('Tally runner did not return a JSON result; raw output saved at ' + str(evidence)) from exc
         response = result.get('finalAssistantVisibleText')
         if not isinstance(response, str) or not response.strip():
-            raise ValueError('Tally runner returned no assistant response')
-        evidence = self.state / 'coordination' / 'runtime' / (task['id'] + '.json')
-        evidence.parent.mkdir(parents=True, exist_ok=True)
+            evidence.write_text(json.dumps(result, indent=2), encoding='utf-8')
+            raise ValueError('Tally runner returned no assistant response; result saved at ' + str(evidence))
         evidence.write_text(json.dumps(result, indent=2), encoding='utf-8')
         coordination.record_runtime_ack(self.state, task['id'], dispatch['run_id'], self.runtime, response, str(evidence))
         return result
