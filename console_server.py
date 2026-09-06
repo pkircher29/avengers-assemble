@@ -3,6 +3,7 @@ import argparse, json, subprocess, sys
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 import mission
+import telemetry
 
 ROOT = Path(__file__).resolve().parent
 STATE = ROOT / 'state'
@@ -46,7 +47,7 @@ def snapshot():
             except json.JSONDecodeError: pass
     mission_record = mission.load(MISSION)
     worker = read_json(STATE/'status.json', {'state':'not-launched'})
-    return {'mission': mission_record, 'worker': worker, 'worker_lifecycle': worker_lifecycle(mission_record, worker), 'events': rows,
+    return {'mission': mission_record, 'worker': worker, 'worker_lifecycle': worker_lifecycle(mission_record, worker), 'roster': telemetry.build_roster(), 'events': rows,
             'scope_boundary':'Local-only V0: Chuck + Claude; no public listener, peer bus, or automatic dispatch.'}
 
 class Handler(BaseHTTPRequestHandler):

@@ -1,0 +1,59 @@
+{
+  "agents": [
+    {
+      "id": "chuck",
+      "name": "Chuck",
+      "role": "coordinator",
+      "adapter": "hermes",
+      "lifecycle": "active",
+      "workspace": "C:/Users/Paul/GITHUB/avengers-assemble-prototype",
+      "terminal": {"kind": "current-session", "availability": "unavailable", "reason": "No browser PTY bridge is implemented."},
+      "controls": [],
+      "evidence": "Current Hermes session; dashboard control plane source."
+    },
+    {
+      "id": "claude",
+      "name": "Claude",
+      "role": "worker",
+      "adapter": "claude-code",
+      "lifecycle": "adapter-verified",
+      "workspace": "C:/Users/Paul/GITHUB/avengers-assemble-prototype/claude-workspace",
+      "terminal": {"kind": "native-console", "title": "Avengers Prototype - Claude - directed by Chuck", "availability": "supported"},
+      "controls": ["stop"],
+      "evidence": "bridge.py state/events/results"
+    },
+    {
+      "id": "tally",
+      "name": "Tally",
+      "role": "bounded-support worker",
+      "adapter": "openclaw",
+      "lifecycle": "foundation-created",
+      "workspace": "C:/Users/Paul/GITHUB/avengers-openclaw-free-workspace",
+      "terminal": {"kind": "local-agent-turn", "availability": "unavailable", "reason": "No verified persistent PTY/session attach bridge."},
+      "controls": [],
+      "evidence": "OpenClaw profile/session metadata; backup and safe tool policy incomplete."
+    },
+    {
+      "id": "antigravity",
+      "name": "Antigravity",
+      "role": "candidate worker",
+      "adapter": "agy",
+      "lifecycle": "adapter-proof-pending",
+      "workspace": "C:/Users/Paul/GITHUB/avengers-antigravity-readonly",
+      "terminal": {"kind": "native-cli", "availability": "unavailable", "reason": "No completed adapter proof or session bridge."},
+      "controls": [],
+      "evidence": "agy.exe installed; model catalog verified; worker proof pending."
+    },
+    {
+      "id": "codex",
+      "name": "Codex",
+      "role": "candidate worker",
+      "adapter": "codex-cli",
+      "lifecycle": "blocked",
+      "workspace": "C:/Users/Paul/GITHUB/avengers-codex-readonly",
+      "terminal": {"kind": "native-cli", "availability": "unavailable", "reason": "Windows sandbox child process creation denied."},
+      "controls": [],
+      "evidence": "Codex Doctor and read-only tool execution repair gate."
+    }
+  ]
+}

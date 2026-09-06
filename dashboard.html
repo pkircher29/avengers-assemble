@@ -135,6 +135,12 @@
     border-color: var(--err);
   }
 
+  #agent-roster { display: grid; grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr)); gap: 0.75rem; }
+  .agent-card { border: 1px solid var(--panel-border); padding: 0.75rem; border-radius: 3px; }
+  .agent-card h3 { margin: 0 0 0.3rem; font-size: 1rem; }
+  .agent-card p { margin: 0.25rem 0; font-size: 0.85rem; }
+  .agent-card code { word-break: break-word; }
+
   #event-timeline {
     list-style: none;
     margin: 0;
@@ -238,6 +244,12 @@
     </p>
   </section>
 
+  <section class="full-width" aria-labelledby="roster-heading">
+    <h2 id="roster-heading">Team Roster &amp; Runtime Evidence</h2>
+    <p id="roster-empty">No agent records are available.</p>
+    <div id="agent-roster" role="list" aria-label="Agent roster"></div>
+  </section>
+
   <section class="full-width" aria-labelledby="timeline-heading">
     <h2 id="timeline-heading">Live Event Timeline</h2>
     <p id="empty-state">No events yet. Waiting for mission activity.</p>
@@ -250,6 +262,18 @@
 
 <script>
   function show(id, value) { document.getElementById(id).textContent = value || "—"; }
+  function value(v) { return (v && typeof v === 'object') ? ('unavailable: ' + (v.reason || 'not reported')) : (v || 'unavailable'); }
+  function renderRoster(roster) {
+    var root = document.getElementById('agent-roster'); root.innerHTML = '';
+    document.getElementById('roster-empty').hidden = roster.length > 0;
+    roster.forEach(function(agent) {
+      var card = document.createElement('article'); card.className = 'agent-card'; card.setAttribute('role', 'listitem');
+      var telemetry = agent.telemetry || {}; var terminal = agent.terminal || {};
+      var title = document.createElement('h3'); title.textContent = agent.name + ' — ' + agent.lifecycle; card.appendChild(title);
+      [['Role', agent.role], ['Adapter', agent.adapter], ['Workspace', agent.workspace], ['Requested model', value(telemetry.requested_model)], ['Effective model', value(telemetry.effective_model)], ['Requested effort', value(telemetry.requested_effort)], ['Effective effort', value(telemetry.effective_effort)], ['Terminal', terminal.availability + (terminal.title ? ': ' + terminal.title : '')], ['Terminal note', terminal.reason || 'native session evidence available'], ['Evidence', agent.evidence]].forEach(function(pair) { var p=document.createElement('p'); var strong=document.createElement('strong'); strong.textContent=pair[0]+': '; p.appendChild(strong); p.appendChild(document.createTextNode(pair[1] || 'unavailable')); card.appendChild(p); });
+      root.appendChild(card);
+    });
+  }
   async function refresh() {
     var status = document.getElementById("controller-status");
     try {
@@ -265,6 +289,7 @@
       show('effective-model', worker.effective_model || 'not reported');
       show('requested-effort', worker.requested_effort || claude.requested_effort);
       show('effective-effort', 'runtime-specific / not reported');
+      renderRoster(data.roster || []);
       var timeline = document.getElementById('event-timeline'); timeline.innerHTML = '';
       (data.events || []).slice().reverse().forEach(function(e) { var item=document.createElement('li'); item.textContent=(e.type || 'event') + ': ' + (e.text || e.note || e.reason || 'recorded'); timeline.appendChild(item); });
       document.getElementById('empty-state').hidden = Boolean((data.events || []).length);
