@@ -38,6 +38,11 @@ class TallyAdapter:
             raise ValueError('Tally runner did not return a JSON result; raw output saved at ' + str(evidence)) from exc
         response = result.get('finalAssistantVisibleText')
         if not isinstance(response, str) or not response.strip():
+            payloads = result.get('payloads')
+            if isinstance(payloads, list):
+                texts = [item.get('text') for item in payloads if isinstance(item, dict) and isinstance(item.get('text'), str) and item['text'].strip()]
+                response = texts[-1] if texts else None
+        if not isinstance(response, str) or not response.strip():
             evidence.write_text(json.dumps(result, indent=2), encoding='utf-8')
             raise ValueError('Tally runner returned no assistant response; result saved at ' + str(evidence))
         evidence.write_text(json.dumps(result, indent=2), encoding='utf-8')
