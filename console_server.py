@@ -7,6 +7,11 @@ import telemetry
 import coordination
 import process_control
 import run_registry
+import dispatcher
+from claude_adapter import ClaudeAdapter
+from codex_adapter import CodexAdapter
+from tally_adapter import TallyAdapter
+from antigravity_adapter import AntigravityAdapter
 
 ROOT = Path(__file__).resolve().parent
 STATE = ROOT / 'state'
@@ -100,6 +105,12 @@ class Handler(BaseHTTPRequestHandler):
             if len(parts) == 4 and parts[:2] == ['api', 'tasks'] and parts[3] == 'handoffs':
                 handoff = coordination.submit_handoff(STATE, parts[2], **payload)
                 return self.send_json(201, {'handoff': handoff})
+            if len(parts) == 4 and parts[:2] == ['api', 'tasks'] and parts[3] == 'dispatch':
+                adapters={'claude':ClaudeAdapter,'codex':CodexAdapter,'tally':TallyAdapter,'antigravity':AntigravityAdapter}
+                task=coordination.get_task(STATE,parts[2]); adapter_class=adapters.get(task['recipient'])
+                if not adapter_class: raise ValueError('task recipient has no managed adapter')
+                active=mission.load(MISSION); dispatched=dispatcher.dispatch_task(STATE,MISSION,task['id'],active['id'],adapter_class(STATE))
+                return self.send_json(200, {'task':dispatched})
             if len(parts) == 4 and parts[:2] == ['api', 'handoffs'] and parts[3] == 'review':
                 handoff = coordination.review_handoff(STATE, parts[2], payload.get('decision'), payload.get('rationale'))
                 return self.send_json(200, {'handoff': handoff})
