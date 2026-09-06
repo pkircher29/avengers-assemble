@@ -4,8 +4,12 @@ Usage totals cover only the records reporting each metric; per-record values and
 coverage counts preserve partial evidence. Tally reads canonical session JSONL,
 not trace sidecars, and emits only explicitly allowlisted metadata.
 """
+import csv
+import io
 import json
 import math
+import subprocess
+import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
@@ -209,6 +213,29 @@ def capability(value, terminal=False):
     if not isinstance(result.get('evidence_source'), str) or not result['evidence_source'].strip():
         result['evidence_source'] = str(REGISTRY)
     return result
+
+
+def host_processes():
+    """Observed host runtime images; never implies agent/run ownership."""
+    images = {'claude.exe': 'claude', 'codex.exe': 'codex', 'agy.exe': 'antigravity', 'openclaw.exe': 'tally'}
+    try:
+        raw = subprocess.run(['tasklist', '/FO', 'CSV', '/NH'], capture_output=True,
+                             text=True, timeout=5, check=False).stdout
+        rows = []
+        for row in csv.reader(io.StringIO(raw)):
+            if len(row) < 2 or row[0].lower() not in images:
+                continue
+            try: pid = int(row[1])
+            except ValueError: continue
+            rows.append({'runtime': images[row[0].lower()], 'image': row[0], 'pid': pid,
+                         'attribution': 'host-observed-unassigned',
+                         'evidence': 'Windows tasklist image/PID observation only'})
+        return {'state': 'available', 'observed_at': time.time(),
+                'scope': 'Recognized runtime executable images visible to this controller.',
+                'items': rows}
+    except (OSError, subprocess.SubprocessError) as exc:
+        return {'state': 'unavailable', 'observed_at': time.time(), 'items': [],
+                'reason': 'Host process probe failed: ' + str(exc)}
 
 
 def build_roster():

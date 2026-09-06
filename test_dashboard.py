@@ -15,6 +15,7 @@ class DashboardFileTests(unittest.TestCase):
         for element_id in (
             "mission-objective", "mission-state", "rounds", "task-count",
             "attention-count", "scope-boundary", "freshness", "agent-roster",
+            "host-process-state", "host-process-list", "host-process-empty",
             "attention-list", "task-list", "run-list", "handoff-list",
             "event-timeline", "task-form", "error-state", "live-status",
         ):

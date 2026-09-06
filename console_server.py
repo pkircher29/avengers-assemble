@@ -78,7 +78,7 @@ def snapshot():
     worker = read_json(STATE/'status.json', {'state':'not-launched'})
     runs_path = STATE / 'coordination' / 'runs.json'
     runs = read_json(runs_path, {})
-    return {'generated_at': time.time(), 'mission': mission_record, 'worker': worker, 'worker_lifecycle': worker_lifecycle(mission_record, worker), 'roster': telemetry.build_roster(), 'coordination': coordination.snapshot(STATE), 'runs': list(runs.values()) if isinstance(runs, dict) else [], 'events': rows,
+    return {'generated_at': time.time(), 'mission': mission_record, 'worker': worker, 'worker_lifecycle': worker_lifecycle(mission_record, worker), 'roster': telemetry.build_roster(), 'host_processes': telemetry.host_processes(), 'coordination': coordination.snapshot(STATE), 'runs': list(runs.values()) if isinstance(runs, dict) else [], 'events': rows,
             'scope_boundary':'Local-only control plane. Dispatch and stop are limited to registered managed adapters; browser terminals are not implemented.'}
 
 class Handler(BaseHTTPRequestHandler):
