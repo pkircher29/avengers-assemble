@@ -20,9 +20,25 @@ REQUIRED_IDS = (
     "btn-pause",
     "btn-resume",
     "btn-stop",
+    "roster-heading",
+    "roster-empty",
+    "agent-roster",
 )
 
 REQUIRED_BUTTON_LABELS = ("Refresh", "Pause", "Resume", "Stop Worker")
+
+REQUIRED_ROSTER_FIELD_LABELS = (
+    "Current status",
+    "Requested model",
+    "Effective model",
+    "Requested effort",
+    "Effective effort",
+    "Token / cost",
+    "Workspace",
+    "Controls",
+    "Evidence",
+    "Native terminal",
+)
 
 
 class DashboardFileTests(unittest.TestCase):
@@ -58,8 +74,33 @@ class DashboardFileTests(unittest.TestCase):
         self.assertNotRegex(self.content, r"<link[^>]+href=")
         self.assertNotRegex(self.content, r'<script[^>]+src=')
 
+    def test_no_embedded_or_fake_terminal(self):
+        self.assertNotRegex(self.content, r"<iframe", re.IGNORECASE)
+        for token in ("xterm", "term.js", "pty.js", "fake-terminal", "simulated-terminal"):
+            with self.subTest(token=token):
+                self.assertNotIn(token, self.content.lower())
+
     def test_wire_controls_function_present(self):
         self.assertIn("function wireControls", self.content)
+
+    def test_roster_renders_from_snapshot_data(self):
+        self.assertIn("function renderRoster", self.content)
+        self.assertIn("data.roster", self.content)
+        self.assertIn("renderRoster(data)", self.content)
+
+    def test_roster_field_labels_present(self):
+        for label in REQUIRED_ROSTER_FIELD_LABELS:
+            with self.subTest(label=label):
+                self.assertIn(label, self.content)
+
+    def test_roster_renders_controls_availability(self):
+        self.assertIn("agent.controls", self.content)
+        self.assertIn("none available", self.content)
+
+    def test_roster_renders_lifecycle_role_adapter(self):
+        self.assertIn("agent.lifecycle", self.content)
+        self.assertIn("agent.role", self.content)
+        self.assertIn("agent.adapter", self.content)
 
 
 if __name__ == "__main__":
