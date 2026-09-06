@@ -5,6 +5,7 @@ from pathlib import Path
 import mission
 import telemetry
 import coordination
+import process_control
 
 ROOT = Path(__file__).resolve().parent
 STATE = ROOT / 'state'
@@ -99,6 +100,9 @@ class Handler(BaseHTTPRequestHandler):
             if len(parts) == 4 and parts[:2] == ['api', 'handoffs'] and parts[3] == 'review':
                 handoff = coordination.review_handoff(STATE, parts[2], payload.get('decision'), payload.get('rationale'))
                 return self.send_json(200, {'handoff': handoff})
+            if len(parts) == 4 and parts[:2] == ['api', 'runs'] and parts[3] == 'stop':
+                run = process_control.stop_registered_run(STATE, parts[2], payload.get('reason', 'dashboard stop request'))
+                return self.send_json(200, {'run': run})
             if self.path.startswith('/api/agents/') and self.path.endswith('/terminal/open'):
                 agent_id = self.path.split('/')[3]
                 return self.send_json(200, {'receipt': open_native_terminal(agent_id)})
