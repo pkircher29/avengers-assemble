@@ -23,8 +23,8 @@ def status_path(task_id):
     return STATE / 'coordination' / 'terminal' / (task_id + '.json')
 
 
-def save_status(task_id, **data):
-    path = status_path(task_id)
+def save_status(status_task_id, **data):
+    path = status_path(status_task_id)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(data, indent=2), encoding='utf-8')
 
@@ -48,7 +48,8 @@ def main():
     if adapter == 'claude':
         cmd = [shutil.which('claude') or 'claude', '--safe-mode', '-p', '--dangerously-skip-permissions', '--output-format', 'json', '--max-turns', '1', '--model', 'sonnet', '--effort', 'low', prompt]
     elif adapter == 'codex':
-        cmd = ['codex', 'exec', '--json', '--dangerously-bypass-approvals-and-sandbox', '--config', 'mcp_servers={}', '--sandbox', 'read-only', prompt]
+        codex = Path(os.environ.get('APPDATA', 'C:/Users/Paul/AppData/Roaming')) / 'npm' / 'codex.cmd'
+        cmd = [str(codex), 'exec', '--json', '--dangerously-bypass-approvals-and-sandbox', '--config', 'mcp_servers={}', '--sandbox', 'read-only', prompt]
     elif adapter == 'antigravity':
         agy = Path(os.environ.get('LOCALAPPDATA', 'C:/Users/Paul/AppData/Local')) / 'agy' / 'bin' / 'agy.exe'
         cmd = [str(agy), '--dangerously-skip-permissions', '--disable-slash-commands', '--output-format', 'json', '--effort', 'low', '-p', prompt]
