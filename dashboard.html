@@ -121,6 +121,15 @@
     cursor: not-allowed;
   }
 
+  input, select {
+    font: inherit;
+    color: var(--text);
+    background: #33383a;
+    border: 1px solid var(--panel-border);
+    border-radius: 3px;
+    padding: 0.35rem;
+  }
+
   button:not(:disabled):hover {
     border-color: var(--accent);
   }
@@ -297,6 +306,17 @@
     </p>
   </section>
 
+  <section class="full-width" aria-labelledby="compose-heading">
+    <h2 id="compose-heading">Queue a Bounded Assignment</h2>
+    <form id="task-form" class="controls">
+      <label>Recipient <select id="task-recipient"><option value="claude">Claude</option><option value="codex">Codex</option><option value="antigravity">Antigravity</option><option value="tally">Tally</option></select></label>
+      <label>Title <input id="task-title" required maxlength="120"></label>
+      <label>Brief <input id="task-brief" required maxlength="1000"></label>
+      <button type="submit">Queue assignment</button>
+    </form>
+    <p id="task-compose-status" role="status" aria-live="polite"></p>
+  </section>
+
   <section class="full-width" aria-labelledby="coordination-heading">
     <h2 id="coordination-heading">Coordination Ledger</h2>
     <p id="coordination-empty">No queued tasks or handoffs yet.</p>
@@ -454,11 +474,25 @@
     } catch (err) { document.getElementById('error-state').hidden=false; document.getElementById('error-state').textContent='Controller error: '+err.message; status.textContent='Controller unavailable.'; }
   }
   async function action(name) { await fetch('/api/' + name, {method:'POST'}); await refresh(); }
+  async function queueTask(event) {
+    event.preventDefault();
+    var status = document.getElementById('task-compose-status');
+    var title = document.getElementById('task-title').value.trim();
+    var brief = document.getElementById('task-brief').value.trim();
+    if (!title || !brief) return;
+    var recipient = document.getElementById('task-recipient').value;
+    status.textContent = 'Queueing assignment; this does not start the agent.';
+    var response = await fetch('/api/tasks', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({producer:'chuck', recipient:recipient, title:title, brief:brief, requested_action:'Acknowledge, complete the bounded brief, and return an evidence-bearing handoff.', evidence:[]})});
+    var body = await response.json();
+    status.textContent = response.ok ? 'Queued ' + body.task.id + '. It awaits recipient acknowledgement.' : ('Queue failed: ' + (body.error || 'unknown error'));
+    if (response.ok) { document.getElementById('task-form').reset(); await refresh(); }
+  }
   function wireControls() {
     document.getElementById('btn-refresh').onclick=refresh;
     document.getElementById('btn-pause').onclick=function(){action('pause')};
     document.getElementById('btn-resume').onclick=function(){action('resume')};
     document.getElementById('btn-stop').onclick=function(){action('stop-worker')};
+    document.getElementById('task-form').addEventListener('submit', queueTask);
     refresh();
   }
   wireControls();
