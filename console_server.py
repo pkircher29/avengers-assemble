@@ -6,6 +6,7 @@ import mission
 import telemetry
 import coordination
 import process_control
+import run_registry
 
 ROOT = Path(__file__).resolve().parent
 STATE = ROOT / 'state'
@@ -70,7 +71,9 @@ def snapshot():
             except json.JSONDecodeError: pass
     mission_record = mission.load(MISSION)
     worker = read_json(STATE/'status.json', {'state':'not-launched'})
-    return {'mission': mission_record, 'worker': worker, 'worker_lifecycle': worker_lifecycle(mission_record, worker), 'roster': telemetry.build_roster(), 'coordination': coordination.snapshot(STATE), 'events': rows,
+    runs_path = STATE / 'coordination' / 'runs.json'
+    runs = read_json(runs_path, {})
+    return {'mission': mission_record, 'worker': worker, 'worker_lifecycle': worker_lifecycle(mission_record, worker), 'roster': telemetry.build_roster(), 'coordination': coordination.snapshot(STATE), 'runs': list(runs.values()) if isinstance(runs, dict) else [], 'events': rows,
             'scope_boundary':'Local-only V0: Chuck + Claude; no public listener, peer bus, or automatic dispatch.'}
 
 class Handler(BaseHTTPRequestHandler):
