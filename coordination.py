@@ -7,9 +7,30 @@ from pathlib import Path
 import time
 import uuid
 import threading
+from contextlib import contextmanager
 
 
 _LOCK = threading.RLock()
+
+
+@contextmanager
+def _claim_lock(state: Path):
+    lock_path = state / 'coordination' / 'dispatch.lock'
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    deadline = time.monotonic() + 5
+    while True:
+        try:
+            fd = os.open(lock_path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+            os.close(fd)
+            break
+        except FileExistsError:
+            if time.monotonic() >= deadline:
+                raise ValueError('dispatch claim lock timed out')
+            time.sleep(0.01)
+    try:
+        yield
+    finally:
+        lock_path.unlink(missing_ok=True)
 
 
 def _now():
@@ -100,7 +121,8 @@ def _claim_dispatch_unlocked(state: Path, task_id: str, mission_id: str, runtime
 
 def claim_dispatch(state: Path, task_id: str, mission_id: str, runtime: str) -> dict:
     with _LOCK:
-        return _claim_dispatch_unlocked(state, task_id, mission_id, runtime)
+        with _claim_lock(state):
+            return _claim_dispatch_unlocked(state, task_id, mission_id, runtime)
 
 
 def mark_dispatched(state: Path, task_id: str) -> dict:
