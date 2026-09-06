@@ -84,6 +84,18 @@ def open_native_terminal(agent_id):
     return receipt
 
 
+def terminal_transcripts():
+    root = STATE / 'coordination' / 'terminal'
+    rows = []
+    for status in sorted(root.glob('*.json')) if root.exists() else []:
+        record = read_json(status, {})
+        log = Path(record.get('log', ''))
+        try: tail = log.read_text(encoding='utf-8', errors='replace')[-6000:]
+        except OSError: tail = ''
+        if record: rows.append(record | {'tail': tail})
+    return rows
+
+
 def snapshot():
     rows = []
     events = STATE / 'events.jsonl'
@@ -95,7 +107,7 @@ def snapshot():
     worker = read_json(STATE/'status.json', {'state':'not-launched'})
     runs_path = STATE / 'coordination' / 'runs.json'
     runs = read_json(runs_path, {})
-    return {'generated_at': time.time(), 'mission': mission_record, 'worker': worker, 'worker_lifecycle': worker_lifecycle(mission_record, worker), 'roster': telemetry.build_roster(), 'host_processes': telemetry.host_processes(), 'coordination': coordination.snapshot(STATE), 'runs': list(runs.values()) if isinstance(runs, dict) else [], 'events': rows,
+    return {'generated_at': time.time(), 'mission': mission_record, 'worker': worker, 'worker_lifecycle': worker_lifecycle(mission_record, worker), 'roster': telemetry.build_roster(), 'host_processes': telemetry.host_processes(), 'terminal_transcripts': terminal_transcripts(), 'coordination': coordination.snapshot(STATE), 'runs': list(runs.values()) if isinstance(runs, dict) else [], 'events': rows,
             'scope_boundary':'Local-only control plane. Dispatch and stop are limited to registered managed adapters; browser terminals are not implemented.'}
 
 class Handler(BaseHTTPRequestHandler):
@@ -106,7 +118,7 @@ class Handler(BaseHTTPRequestHandler):
         if self.path == '/api/snapshot': return self.send_json(200, snapshot())
         if self.path == '/api/comms':
             data = snapshot()
-            return self.send_json(200, {'generated_at': data['generated_at'], 'events': data['events'], 'source': 'durable controller event log'})
+            return self.send_json(200, {'generated_at': data['generated_at'], 'events': data['events'], 'terminal_transcripts': data['terminal_transcripts'], 'source': 'durable controller event log'})
         if self.path != '/': return self.send_json(404, {'error':'not found'})
         data=DASHBOARD.read_bytes(); self.send_response(200); self.send_header('Content-Type','text/html; charset=utf-8'); self.send_header('Content-Length',str(len(data))); self.end_headers(); self.wfile.write(data)
     def do_POST(self):

@@ -50,6 +50,13 @@ def _load(path: Path, default):
     return json.loads(path.read_text(encoding='utf-8'))
 
 
+def _event(state: Path, event: dict) -> None:
+    path = state / 'events.jsonl'
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open('a', encoding='utf-8') as stream:
+        stream.write(json.dumps(event) + '\n')
+
+
 def _tasks_path(state: Path) -> Path:
     return state / 'coordination' / 'tasks.json'
 
@@ -155,6 +162,7 @@ def record_runtime_ack(state: Path, task_id: str, run_id: str, runtime: str, not
     task['acknowledgement'] = {'recipient': task['recipient'], 'note': _validate_text(note, 'note'), 'at': _now(), 'origin': 'runtime', 'run_id': run_id, 'evidence_ref': _validate_text(evidence_ref, 'evidence ref')}
     task['status'] = 'acknowledged'
     _save(_tasks_path(state), tasks)
+    _event(state, {'time': _now(), 'type': 'runtime_acknowledged', 'task_id': task_id, 'run_id': run_id, 'runtime': runtime, 'note': task['acknowledgement']['note']})
     return task
 
 
@@ -182,6 +190,7 @@ def record_runtime_handoff(state: Path, task_id: str, run_id: str, runtime: str,
     handoff={'id':uuid.uuid4().hex,'task_id':task_id,'producer':task['recipient'],'recipient':'chuck','claim':_validate_text(claim,'claim'),'confidence':confidence,'sources':_validate_strings(sources,'sources'),'requested_action':_validate_text(requested_action,'requested action'),'review_status':'needs-review','created_at':_now(),'origin':'runtime','run_id':run_id,'evidence_ref':_validate_text(evidence_ref,'evidence ref')}
     handoffs=_load(_handoffs_path(state),[]); handoffs.append(handoff); _save(_handoffs_path(state),handoffs)
     task['handoff_id']=handoff['id']; task['status']='handoff-submitted'; _save(_tasks_path(state),tasks)
+    _event(state, {'time': _now(), 'type': 'runtime_handoff_submitted', 'task_id': task_id, 'run_id': run_id, 'runtime': runtime, 'handoff_id': handoff['id'], 'claim': handoff['claim']})
     return handoff
 
 
