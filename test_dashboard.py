@@ -51,7 +51,8 @@ class DashboardFileTests(unittest.TestCase):
         self.assertIn("function renderRoster", self.content)
         self.assertIn("d.roster", self.content)
         self.assertIn("function ownState", self.content)
-        self.assertIn("Live state unknown", self.content)
+        self.assertIn("Host activity observed", self.content)
+        self.assertIn("No managed process observed", self.content)
         self.assertIn("agent.lifecycle", self.content)
         self.assertIn("telemetry.current_work", self.content)
 
