@@ -171,6 +171,31 @@ def acknowledge_task(state: Path, task_id: str, recipient: str, note: str) -> di
     return task
 
 
+def record_runtime_handoff(state: Path, task_id: str, run_id: str, runtime: str, claim: str, confidence: str, sources: list[str], requested_action: str, evidence_ref: str) -> dict:
+    tasks = _read_tasks(state); task = _find_task(tasks, task_id); dispatch = task.get('dispatch'); ack = task.get('acknowledgement')
+    if task['status'] != 'acknowledged' or not ack:
+        raise ValueError('task must be acknowledged before runtime handoff')
+    if not dispatch or dispatch['run_id'] != _validate_text(run_id, 'run id') or dispatch['runtime'] != _validate_text(runtime, 'runtime'):
+        raise ValueError('run id or runtime does not match task dispatch')
+    if task.get('handoff_id') is not None: raise ValueError('task already has a handoff')
+    if confidence not in {'low','medium','high'}: raise ValueError('confidence must be low, medium, or high')
+    handoff={'id':uuid.uuid4().hex,'task_id':task_id,'producer':task['recipient'],'recipient':'chuck','claim':_validate_text(claim,'claim'),'confidence':confidence,'sources':_validate_strings(sources,'sources'),'requested_action':_validate_text(requested_action,'requested action'),'review_status':'needs-review','created_at':_now(),'origin':'runtime','run_id':run_id,'evidence_ref':_validate_text(evidence_ref,'evidence ref')}
+    handoffs=_load(_handoffs_path(state),[]); handoffs.append(handoff); _save(_handoffs_path(state),handoffs)
+    task['handoff_id']=handoff['id']; task['status']='handoff-submitted'; _save(_tasks_path(state),tasks)
+    return handoff
+
+
+def review_handoff(state: Path, handoff_id: str, decision: str, rationale: str) -> dict:
+    if decision not in {'approved','quarantined','released'}: raise ValueError('invalid handoff review decision')
+    handoffs=_load(_handoffs_path(state),[])
+    handoff=next((item for item in handoffs if item.get('id')==handoff_id),None)
+    if not handoff: raise ValueError('unknown handoff')
+    review={'decision':decision,'rationale':_validate_text(rationale,'rationale'),'at':_now()}
+    handoff['review_status']=decision; handoff.setdefault('review_history',[]).append(review)
+    _save(_handoffs_path(state),handoffs)
+    return handoff
+
+
 def submit_handoff(state: Path, task_id: str, producer: str, recipient: str, claim: str,
                    confidence: str, sources: list[str], requested_action: str) -> dict:
     tasks = _read_tasks(state)
