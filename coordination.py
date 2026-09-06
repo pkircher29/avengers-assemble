@@ -6,6 +6,10 @@ import os
 from pathlib import Path
 import time
 import uuid
+import threading
+
+
+_LOCK = threading.RLock()
 
 
 def _now():
@@ -81,7 +85,7 @@ def create_task(state: Path, *, producer: str, recipient: str, title: str, brief
     return task
 
 
-def claim_dispatch(state: Path, task_id: str, mission_id: str, runtime: str) -> dict:
+def _claim_dispatch_unlocked(state: Path, task_id: str, mission_id: str, runtime: str) -> dict:
     tasks = _read_tasks(state)
     task = _find_task(tasks, task_id)
     if task.get('dispatch') is not None:
@@ -92,6 +96,11 @@ def claim_dispatch(state: Path, task_id: str, mission_id: str, runtime: str) -> 
     task['status'] = 'dispatching'
     _save(_tasks_path(state), tasks)
     return task
+
+
+def claim_dispatch(state: Path, task_id: str, mission_id: str, runtime: str) -> dict:
+    with _LOCK:
+        return _claim_dispatch_unlocked(state, task_id, mission_id, runtime)
 
 
 def mark_dispatched(state: Path, task_id: str) -> dict:
