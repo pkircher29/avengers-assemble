@@ -96,6 +96,9 @@ class Handler(BaseHTTPRequestHandler):
             if len(parts) == 4 and parts[:2] == ['api', 'tasks'] and parts[3] == 'handoffs':
                 handoff = coordination.submit_handoff(STATE, parts[2], **payload)
                 return self.send_json(201, {'handoff': handoff})
+            if len(parts) == 4 and parts[:2] == ['api', 'handoffs'] and parts[3] == 'review':
+                handoff = coordination.review_handoff(STATE, parts[2], payload.get('decision'), payload.get('rationale'))
+                return self.send_json(200, {'handoff': handoff})
             if self.path.startswith('/api/agents/') and self.path.endswith('/terminal/open'):
                 agent_id = self.path.split('/')[3]
                 return self.send_json(200, {'receipt': open_native_terminal(agent_id)})
