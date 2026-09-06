@@ -297,6 +297,12 @@
     </p>
   </section>
 
+  <section class="full-width" aria-labelledby="coordination-heading">
+    <h2 id="coordination-heading">Coordination Ledger</h2>
+    <p id="coordination-empty">No queued tasks or handoffs yet.</p>
+    <ul id="coordination-ledger" aria-live="polite" aria-label="Task and handoff ledger"></ul>
+  </section>
+
   <section class="full-width" aria-labelledby="timeline-heading">
     <h2 id="timeline-heading">Live Event Timeline</h2>
     <p id="empty-state">No events yet. Waiting for mission activity.</p>
@@ -416,6 +422,13 @@
       root.appendChild(card);
     });
   }
+  function renderCoordination(data) {
+    var ledger = document.getElementById('coordination-ledger'); ledger.innerHTML = '';
+    var coordination = data.coordination || {}; var tasks = coordination.tasks || []; var handoffs = coordination.handoffs || [];
+    tasks.forEach(function(task) { var item = document.createElement('li'); item.textContent = 'TASK ' + task.status + ' — ' + task.producer + ' → ' + task.recipient + ': ' + task.title + ' [' + task.id.slice(0, 8) + ']'; ledger.appendChild(item); });
+    handoffs.forEach(function(handoff) { var item = document.createElement('li'); item.textContent = 'HANDOFF ' + handoff.review_status + ' — ' + handoff.producer + ' → ' + handoff.recipient + ': ' + handoff.claim + ' (' + handoff.confidence + ')'; ledger.appendChild(item); });
+    document.getElementById('coordination-empty').hidden = Boolean(tasks.length || handoffs.length);
+  }
   async function refresh() {
     var status = document.getElementById("controller-status");
     try {
@@ -432,6 +445,7 @@
       show('requested-effort', worker.requested_effort || claude.requested_effort);
       show('effective-effort', 'runtime-specific / not reported');
       renderRoster(data);
+      renderCoordination(data);
       var timeline = document.getElementById('event-timeline'); timeline.innerHTML = '';
       (data.events || []).slice().reverse().forEach(function(e) { var item=document.createElement('li'); item.textContent=(e.type || 'event') + ': ' + (e.text || e.note || e.reason || 'recorded'); timeline.appendChild(item); });
       document.getElementById('empty-state').hidden = Boolean((data.events || []).length);

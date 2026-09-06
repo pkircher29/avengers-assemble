@@ -4,6 +4,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 import mission
 import telemetry
+import coordination
 
 ROOT = Path(__file__).resolve().parent
 STATE = ROOT / 'state'
@@ -68,7 +69,7 @@ def snapshot():
             except json.JSONDecodeError: pass
     mission_record = mission.load(MISSION)
     worker = read_json(STATE/'status.json', {'state':'not-launched'})
-    return {'mission': mission_record, 'worker': worker, 'worker_lifecycle': worker_lifecycle(mission_record, worker), 'roster': telemetry.build_roster(), 'events': rows,
+    return {'mission': mission_record, 'worker': worker, 'worker_lifecycle': worker_lifecycle(mission_record, worker), 'roster': telemetry.build_roster(), 'coordination': coordination.snapshot(STATE), 'events': rows,
             'scope_boundary':'Local-only V0: Chuck + Claude; no public listener, peer bus, or automatic dispatch.'}
 
 class Handler(BaseHTTPRequestHandler):
@@ -82,6 +83,19 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         actions={'/api/pause':'pause','/api/resume':'resume','/api/clear':'clear'}
         try:
+            length = int(self.headers.get('Content-Length', '0'))
+            payload = json.loads(self.rfile.read(length) or b'{}') if length else {}
+            if not isinstance(payload, dict): raise ValueError('request body must be an object')
+            if self.path == '/api/tasks':
+                task = coordination.create_task(STATE, **payload)
+                return self.send_json(201, {'task': task})
+            parts = self.path.strip('/').split('/')
+            if len(parts) == 4 and parts[:2] == ['api', 'tasks'] and parts[3] == 'acknowledgements':
+                task = coordination.acknowledge_task(STATE, parts[2], payload.get('recipient'), payload.get('note'))
+                return self.send_json(200, {'task': task})
+            if len(parts) == 4 and parts[:2] == ['api', 'tasks'] and parts[3] == 'handoffs':
+                handoff = coordination.submit_handoff(STATE, parts[2], **payload)
+                return self.send_json(201, {'handoff': handoff})
             if self.path.startswith('/api/agents/') and self.path.endswith('/terminal/open'):
                 agent_id = self.path.split('/')[3]
                 return self.send_json(200, {'receipt': open_native_terminal(agent_id)})
