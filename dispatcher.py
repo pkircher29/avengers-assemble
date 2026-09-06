@@ -24,6 +24,7 @@ def dispatch_task(state: Path, mission_path: Path, task_id: str, mission_id: str
             collector(dispatched, dispatched['dispatch'], handle)
             if run_registry.get(state, dispatched['dispatch']['run_id']): run_registry.update(state, dispatched['dispatch']['run_id'], state='completed')
         except Exception as exc:
-            if run_registry.get(state, dispatched['dispatch']['run_id']): run_registry.update(state, dispatched['dispatch']['run_id'], state='failed', error=str(exc))
+            existing=run_registry.get(state, dispatched['dispatch']['run_id'])
+            if existing and existing.get('state')=='running': run_registry.update(state, dispatched['dispatch']['run_id'], state='failed', error=str(exc))
             raise
     return coordination.get_task(state, task_id)
